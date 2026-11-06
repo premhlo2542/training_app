@@ -18,6 +18,7 @@ const EQUIP = {
   barbell:   'บาร์เบล',
   machine:   'เครื่อง/เคเบิล',
   kettlebell:'เคตเทิลเบล',
+  light:     'ยางยืด/ลูกบอล/โฟมโรลเลอร์',
   other:     'อื่นๆ'
 };
 
@@ -93,10 +94,10 @@ const _EX = [
   ['Hanging_Leg_Raise','ห้อยตัวยกขา','Hanging Leg Raise','core','body','ห้อยบาร์ ยกขาขึ้นด้วยแรงท้อง ไม่เหวี่ยง'],
   ['Dead_Bug','เดดบัก','Dead Bug','core','body','หลังล่างแนบพื้น ยื่นแขนขาตรงข้ามสลับกันช้าๆ'],
   ['Cable_Crunch','เคเบิลครันช์','Cable Crunch','core','machine','คุกเข่า ม้วนลำตัวลงด้วยแรงท้อง ไม่ใช้แขนดึง'],
-  ['Ab_Roller','ลูกล้อบริหารหน้าท้อง','Ab Roller','core','other','เกร็งท้องตลอด ไม่แอ่นหลัง เริ่มจากช่วงสั้นๆ'],
+  ['Ab_Roller','ลูกล้อบริหารหน้าท้อง','Ab Roller','core','light','เกร็งท้องตลอด ไม่แอ่นหลัง เริ่มจากช่วงสั้นๆ'],
   // คาร์ดิโอ
   ['Mountain_Climbers','เมาน์เทนไคลเมอร์','Mountain Climbers','cardio','body','ท่าวิดพื้น สลับเข่าเข้าหาอกเร็วๆ เผาผลาญสูง'],
-  ['Rope_Jumping','กระโดดเชือก','Jump Rope','cardio','other','กระโดดเบาๆ ข้อมือหมุนเชือก ลงปลายเท้า'],
+  ['Rope_Jumping','กระโดดเชือก','Jump Rope','cardio','light','กระโดดเบาๆ ข้อมือหมุนเชือก ลงปลายเท้า'],
   ['One-Arm_Kettlebell_Swings','เคตเทิลเบลสวิง','Kettlebell Swing','cardio','kettlebell','ใช้แรงสะโพกดีดขึ้น ไม่ใช้แขนยก หลังตรง'],
   ['Freehand_Jump_Squat','จัมป์สควอท','Jump Squat','cardio','body','สควอทแล้วกระโดดขึ้น ลงนุ่มๆ งอเข่ารับแรง'],
   ['Walking_Treadmill','เดินสายพาน (ชัน)','Incline Treadmill Walk','cardio','machine','ปรับความชัน 8–12% เดินเร็ว ไม่เกาะราว'],
@@ -106,16 +107,136 @@ const _EX = [
   ['Elliptical_Trainer','เครื่องเอลลิปติคอล','Elliptical','cardio','machine','คาร์ดิโอแรงกระแทกต่ำ เหมาะกับคนมีปัญหาข้อเข่า'],
   ['Recumbent_Bike','จักรยานนั่งเอน','Recumbent Bike','cardio','machine','ปั่นสบาย เหมาะวอร์มอัพ/คูลดาวน์'],
   // ไม่มีภาพ (ใช้ปุ่มวิดีโอ)
-  ['@burpee','เบอร์พี','Burpee','cardio','body','ย่อ-วิดพื้น-ลุกกระโดด ปรับให้ง่ายขึ้นด้วยการไม่วิดพื้น'],
-  ['@jumping-jack','จัมปิ้งแจ็ค','Jumping Jacks','cardio','body','กระโดดกางแขนขาพร้อมกัน เหมาะวอร์มอัพ'],
-  ['@high-knees','วิ่งยกเข่าสูง','High Knees','cardio','body','วิ่งอยู่กับที่ ยกเข่าสูงระดับสะโพก']
 ];
 
 const PLACES = { gym: { th: 'ที่ยิม', e: '🏋️' }, home: { th: 'ที่บ้าน', e: '🏠' } };
-// ท่าที่ทำที่บ้านได้: น้ำหนักตัว ดัมเบล เคตเทิลเบล และอุปกรณ์ง่ายๆ (เชือก/ลูกล้อ)
-const homeOk = e => ['body', 'dumbbell', 'kettlebell', 'other'].includes(e.eq) || e.custom;
+// ท่าที่ทำที่บ้านได้: น้ำหนักตัว ดัมเบล เคตเทิลเบล และอุปกรณ์เบาๆ (ยางยืด/ลูกบอล/โฟมโรลเลอร์/เชือก)
+const homeOk = e => ['body', 'dumbbell', 'kettlebell', 'light'].includes(e.eq) || e.custom;
 
-const EX = _EX.map(([id, th, en, m, eq, tip]) => ({ id, th, en, m, eq, tip, db: !id.startsWith('@') }));
+/* ---------- ข้อมูลกล้ามเนื้อ (ไทย) ---------- */
+const MUSCLE_INFO = {
+  'abdominals': { th: 'กล้ามเนื้อหน้าท้อง', sub: 'Rectus abdominis • Transversus abdominis • Obliques', d: 'แผงกล้ามท้อง "ซิกซ์แพ็ก" ด้านหน้า กล้ามท้องชั้นลึกที่รัดลำไส้และพยุงหลัง และกล้ามท้องด้านข้างที่ช่วยบิดและเอียงลำตัว ช่วยให้แกนกลางลำตัวมั่นคง' },
+  'abductors': { th: 'สะโพกด้านนอก', sub: 'Gluteus medius • Gluteus minimus • TFL', d: 'กล้ามเนื้อด้านข้างสะโพกที่ช่วยกางขาออก ทรงตัวขณะยืนขาเดียว และทำให้สะโพกด้านข้างกระชับ' },
+  'adductors': { th: 'ต้นขาด้านใน', sub: 'Adductor magnus • longus • brevis • Gracilis', d: 'กล้ามเนื้อต้นขาด้านในที่ช่วยหุบขาเข้าหากัน ช่วยพยุงเข่าและสะโพก ท่ายืดจะรู้สึกตึงบริเวณขาหนีบ' },
+  'biceps': { th: 'ต้นแขนด้านหน้า (ไบเซ็ป)', sub: 'Biceps brachii (หัวสั้น/หัวยาว) • Brachialis', d: 'กล้ามเนื้อที่งอข้อศอกและหมุนแขนหงาย หัวยาวทำให้ต้นแขนดูนูนสูง ส่วน Brachialis อยู่ใต้ไบเซ็ปช่วยเพิ่มความหนาของแขน' },
+  'calves': { th: 'น่อง', sub: 'Gastrocnemius (น่องนอก/ใน) • Soleus', d: 'กล้ามเนื้อน่องที่ใช้เขย่งปลายเท้า เดิน วิ่ง และกระโดด Gastrocnemius อยู่ผิวนอก ส่วน Soleus อยู่ชั้นลึกใช้มากเมื่อเข่างอ' },
+  'chest': { th: 'อก', sub: 'Pectoralis major (อกบน/กลาง/ล่าง) • Pectoralis minor', d: 'กล้ามอกใหญ่ที่ดัน กางแขน และหุบแขนเข้าหากลางลำตัว ท่าเอียงขึ้นเน้นอกส่วนบน ท่าราบเน้นอกส่วนกลาง และท่าเอียงลงเน้นอกส่วนล่าง' },
+  'forearms': { th: 'ปลายแขน', sub: 'Wrist flexors • Wrist extensors • Brachioradialis', d: 'กล้ามเนื้อที่งอ-เหยียดข้อมือและช่วยการจับ ส่งผลต่อแรงบีบมือและความมั่นคงของข้อมือ' },
+  'glutes': { th: 'ก้น', sub: 'Gluteus maximus • medius • minimus', d: 'กล้ามเนื้อมัดใหญ่ที่สุดของร่างกาย ใช้เหยียดสะโพก ลุกยืน ก้าวขึ้นบันได และกระโดด ทำให้ก้นกระชับและช่วยปกป้องหลังล่าง' },
+  'hamstrings': { th: 'ต้นขาด้านหลัง', sub: 'Biceps femoris • Semitendinosus • Semimembranosus', d: 'กล้ามเนื้อสามมัดหลังต้นขาที่งอเข่าและเหยียดสะโพก ช่วยพยุงเข่า ป้องกันการบาดเจ็บ และมักตึงเมื่อนั่งนาน' },
+  'hip flexors': { th: 'กล้ามงอสะโพก', sub: 'Iliopsoas • Rectus femoris', d: 'กล้ามเนื้อลึกด้านหน้าสะโพกที่ยกเข่าขึ้นหาลำตัว มักตึงและสั้นเมื่อนั่งนาน ส่งผลให้หลังล่างแอ่น' },
+  'lats': { th: 'ปีกหลัง', sub: 'Latissimus dorsi (กล้ามหลังกว้าง)', d: 'กล้ามเนื้อแผ่นใหญ่ด้านข้างของหลังที่ดึงแขนลงและเข้าหาลำตัว ทำให้หลังกว้างเป็นรูปตัววี ใช้มากในท่าดึง เช่น พูลอัพ แลตพูลดาวน์' },
+  'lower back': { th: 'หลังส่วนล่าง', sub: 'Erector spinae • Quadratus lumborum', d: 'กล้ามเนื้อสองข้างของกระดูกสันหลังช่วงเอวที่พยุงลำตัวให้ตรงและเหยียดหลัง สำคัญมากต่อท่าเดดลิฟต์และการยกของ ควรทำด้วยท่าที่ถูกต้อง' },
+  'middle back': { th: 'กลางหลัง', sub: 'Rhomboids • Trapezius ส่วนกลาง/ล่าง • Teres major', d: 'กล้ามเนื้อที่ดึงสะบักเข้าหากัน ช่วยให้ไหล่ไม่ห่อและท่าทางดี ใช้ในท่าโรว์ทุกแบบ' },
+  'neck': { th: 'คอ', sub: 'Sternocleidomastoid • Splenius • Levator scapulae', d: 'กล้ามเนื้อรอบคอที่หมุน ก้ม เงยและพยุงศีรษะ มักตึงจากการก้มจอหรือนั่งทำงานนาน ควรทำเบาๆ ช้าๆ' },
+  'quadriceps': { th: 'ต้นขาด้านหน้า (ควอดริเซ็ป)', sub: 'Rectus femoris • Vastus lateralis • medialis • intermedius', d: 'กล้ามเนื้อสี่มัดหน้าต้นขาที่เหยียดเข่า ใช้ในการสควอท ลันจ์ วิ่ง และขึ้นบันได Rectus femoris ยังช่วยงอสะโพก จึงตึงง่ายเมื่อนั่งนาน' },
+  'shoulders': { th: 'ไหล่', sub: 'Deltoid (หน้า/ข้าง/หลัง) • Rotator cuff', d: 'กล้ามไหล่สามหัวที่ยกแขนไปด้านหน้า ด้านข้าง และด้านหลัง บวกกลุ่ม Rotator cuff ที่คอยพยุงข้อต่อไหล่ให้มั่นคง' },
+  'traps': { th: 'บ่า', sub: 'Trapezius (บน/กลาง/ล่าง)', d: 'กล้ามเนื้อรูปสี่เหลี่ยมคางหมูจากคอถึงกลางหลัง ใช้ยักไหล่ ยกสะบัก และดึงสะบักเข้าหากัน มักปวดเมื่อยจากความเครียดและการนั่งทำงาน' },
+  'triceps': { th: 'ต้นแขนด้านหลัง (ไตรเซ็ป)', sub: 'Triceps brachii (long • lateral • medial head)', d: 'กล้ามสามหัวหลังต้นแขนที่เหยียดข้อศอก คิดเป็นราว 2 ใน 3 ของขนาดต้นแขน ใช้ในท่าดันทุกชนิด เช่น วิดพื้น เบนช์เพรส' }
+};
+const GROUP_OF = { abdominals: 'core', abductors: 'glutes', adductors: 'legs', biceps: 'arms', calves: 'legs', chest: 'chest', forearms: 'arms', glutes: 'glutes', hamstrings: 'legs',
+  lats: 'back', 'lower back': 'back', 'middle back': 'back', neck: 'shoulders', quadriceps: 'legs', shoulders: 'shoulders', traps: 'shoulders', triceps: 'arms' };
+const CAT_TH = { strength: 'เวทเทรนนิ่ง', stretching: 'ยืดเหยียด', cardio: 'คาร์ดิโอ', plyo: 'พลัยโอเมตริก', special: 'ขั้นสูง/พิเศษ' };
+const CAT_E = { strength: '🏋️', stretching: '🧘', cardio: '🏃', plyo: '⚡', special: '🔥' };
+const LEVEL_TH = { b: 'เริ่มต้น', i: 'ปานกลาง', e: 'ขั้นสูง' };
+const AUD = { w: { th: 'เหมาะกับผู้หญิง', e: '👩' }, k: { th: 'เหมาะกับเด็ก', e: '🧒' } };
+
+/* รายละเอียดเชิงลึกเฉพาะท่ายอดนิยม (ส่วนย่อยของกล้ามเนื้อ) */
+const FOCUS = {
+  'Barbell_Bench_Press_-_Medium_Grip': 'เน้นอกส่วนกลางและล่าง รองลงมาคือไหล่ด้านหน้าและไตรเซ็ป',
+  'Dumbbell_Bench_Press': 'เน้นอกส่วนกลาง ดัมเบลช่วยให้ลงลึกและหุบเข้ากลางอกได้มากกว่าบาร์',
+  'Incline_Dumbbell_Press': 'เน้นอกส่วนบน (ใต้ไหปลาร้า) และไหล่ด้านหน้ามากขึ้น',
+  'Dumbbell_Flyes': 'เน้นการยืดและบีบกล้ามอกด้านใน ไตรเซ็ปแทบไม่ช่วย',
+  'Pushups': 'อกส่วนกลาง ไตรเซ็ป ไหล่หน้า และต้องเกร็งท้อง/ก้นเพื่อรักษาลำตัวให้ตรง',
+  'Decline_Push-Up': 'เน้นอกส่วนบนและไหล่ด้านหน้ามากกว่าวิดพื้นปกติ',
+  'Pullups': 'ปีกหลังเป็นหลัก ตามด้วยไบเซ็ป กลางหลัง และปลายแขน (กำลังจับ)',
+  'Chin-Up': 'ปีกหลังและไบเซ็ปมากกว่าพูลอัพ เพราะจับหงาย',
+  'Wide-Grip_Lat_Pulldown': 'ปีกหลังส่วนนอก (ทำให้หลังกว้าง) จับกว้างเน้นความกว้าง จับแคบเน้นความหนา',
+  'Seated_Cable_Rows': 'กลางหลัง (Rhomboids) และปีกหลังส่วนล่าง ช่วยแก้ไหล่ห่อ',
+  'Barbell_Deadlift': 'หลังล่าง ก้น ต้นขาด้านหลัง และบ่า ใช้กล้ามเนื้อด้านหลังลำตัวเกือบทั้งหมด',
+  'Romanian_Deadlift': 'ต้นขาด้านหลังและก้นเป็นหลัก รู้สึกยืดที่หลังต้นขาตอนลง',
+  'Barbell_Squat': 'ต้นขาด้านหน้าและก้น หลังล่างและหน้าท้องช่วยพยุงลำตัว ลงลึกเน้นก้นมากขึ้น',
+  'Goblet_Squat': 'ต้นขาด้านหน้าและก้น ถือน้ำหนักหน้าอกช่วยให้ลำตัวตั้งตรง',
+  'Dumbbell_Lunges': 'ต้นขาด้านหน้าและก้น ก้าวยาวขึ้นจะเน้นก้นมากขึ้น',
+  'Barbell_Hip_Thrust': 'ก้น (Gluteus maximus) เป็นหลักเกือบทั้งหมด ต้นขาด้านหลังช่วยรอง',
+  'Butt_Lift_Bridge': 'ก้นและต้นขาด้านหลัง บีบก้นค้างช่วงบนสุดเพื่อเน้นกล้ามก้น',
+  'Glute_Kickback': 'ก้นด้านหลัง (Gluteus maximus) ยกสูงเกินไปจะไปใช้หลังล่างแทน',
+  'Leg_Extensions': 'ต้นขาด้านหน้าแบบแยกส่วน (Isolation) เน้นช่วงเหยียดเข่าสุด',
+  'Lying_Leg_Curls': 'ต้นขาด้านหลังแบบแยกส่วน ช่วยบาลานซ์กับต้นขาด้านหน้า',
+  'Standing_Calf_Raises': 'น่องส่วนนอก (Gastrocnemius) เป็นหลัก',
+  'Dumbbell_Shoulder_Press': 'ไหล่ส่วนหน้าและข้าง ไตรเซ็ปและบ่าช่วยดันขึ้น',
+  'Side_Lateral_Raise': 'ไหล่ส่วนข้าง (Lateral deltoid) ทำให้ไหล่กว้าง',
+  'Reverse_Flyes': 'ไหล่ส่วนหลังและกลางหลัง ช่วยแก้ท่าทางไหล่ห่อ',
+  'Face_Pull': 'ไหล่หลังและกล้ามหมุนไหล่ (Rotator cuff) ดีต่อสุขภาพไหล่',
+  'Barbell_Curl': 'ไบเซ็ปทั้งสองหัว ปลายแขนช่วยจับ',
+  'Hammer_Curls': 'Brachialis และปลายแขน ทำให้แขนดูหนาขึ้นจากด้านข้าง',
+  'Triceps_Pushdown': 'ไตรเซ็ป โดยเฉพาะหัวด้านข้าง (Lateral head) เห็นชัดเมื่อมองจากด้านหลัง',
+  'Cable_Rope_Overhead_Triceps_Extension': 'ไตรเซ็ปหัวยาว (Long head) เพราะแขนอยู่เหนือศีรษะทำให้ยืดมาก',
+  'Plank': 'Transversus abdominis (ท้องชั้นลึก) ร่วมกับไหล่ ก้น และหลังล่าง เป็นการเกร็งค้าง',
+  'Crunches': 'หน้าท้องส่วนบน (Upper rectus abdominis)',
+  'Hanging_Leg_Raise': 'หน้าท้องส่วนล่างและกล้ามงอสะโพก',
+  'Russian_Twist': 'หน้าท้องด้านข้าง (Obliques) จากการบิดลำตัว',
+  'Dead_Bug': 'ท้องชั้นลึกและกล้ามงอสะโพก ฝึกคุมหลังล่างให้แนบพื้น',
+  'Mountain_Climbers': 'หน้าท้อง ไหล่ และต้นขาด้านหน้า พร้อมเผาผลาญสูงเพราะเป็นคาร์ดิโอ',
+  'Superman': 'หลังล่างและก้น ช่วยเสริมความแข็งแรงของกล้ามเนื้อพยุงกระดูกสันหลัง'
+};
+
+/* ท่าเพิ่มเติม (ไม่มีภาพในฐานข้อมูล ใช้ไอคอนแทน + ปุ่มดูวิดีโอ):
+   [id, ไทย, English, หมวด, อุปกรณ์, ระดับ, กล้ามหลัก[], กล้ามรอง[], กลุ่ม, เทคนิค] */
+const _EXTRA = [
+  ['@burpee', 'เบอร์พี', 'Burpee', 'cardio', 'body', 'i', ['quadriceps', 'chest'], ['glutes', 'shoulders', 'triceps', 'abdominals'], '', 'ย่อ-วิดพื้น-ลุกกระโดด ปรับให้ง่ายขึ้นด้วยการไม่วิดพื้น'],
+  ['@jumping-jack', 'จัมปิ้งแจ็ค', 'Jumping Jacks', 'cardio', 'body', 'b', ['calves', 'quadriceps'], ['shoulders', 'glutes', 'abductors'], 'wk', 'กระโดดกางแขนขาพร้อมกัน เหมาะวอร์มอัพ'],
+  ['@high-knees', 'วิ่งยกเข่าสูง', 'High Knees', 'cardio', 'body', 'b', ['quadriceps', 'abdominals'], ['calves', 'glutes', 'hamstrings'], 'wk', 'วิ่งอยู่กับที่ ยกเข่าสูงระดับสะโพก'],
+  ['@butt-kicks', 'วิ่งส้นเท้าแตะก้น', 'Butt Kicks', 'cardio', 'body', 'b', ['hamstrings'], ['calves', 'quadriceps'], 'wk', 'วิ่งเหยาะอยู่กับที่ ดีดส้นเท้าขึ้นแตะก้น ยืดต้นขาหน้าไปด้วย'],
+  ['@skater-hops', 'สเก็ตเตอร์ (กระโดดข้างสลับ)', 'Skater Hops', 'cardio', 'body', 'i', ['glutes', 'abductors'], ['quadriceps', 'calves', 'adductors'], 'w', 'กระโดดข้างสลับซ้ายขวาเหมือนนักสเก็ต ลงนุ่มๆ งอเข่ารับแรง'],
+  ['@shadow-boxing', 'ชาโดว์บ็อกซิ่ง (ต่อยลม)', 'Shadow Boxing', 'cardio', 'body', 'b', ['shoulders', 'abdominals'], ['chest', 'triceps', 'calves'], 'wk', 'ต่อยหมัดตรง-หมัดฮุกสลับ หมุนสะโพกตามหมัด เผาผลาญสูงและสนุก'],
+  ['@dance-cardio', 'แอโรบิกเต้นตามเพลง (ซุมบ้า)', 'Dance Cardio / Zumba', 'cardio', 'body', 'b', ['quadriceps', 'calves'], ['glutes', 'abdominals', 'shoulders'], 'wk', 'เต้นตามเพลงจังหวะสนุก 20–40 นาที เหมาะกับคนไม่ชอบคาร์ดิโอแบบเดิมๆ'],
+  ['@brisk-walk', 'เดินเร็ว', 'Brisk Walking', 'cardio', 'body', 'b', ['quadriceps'], ['hamstrings', 'calves', 'glutes'], 'wk', 'เดินเร็วจนพูดเป็นประโยคได้แต่ร้องเพลงไม่ไหว เหมาะกับทุกวัย ข้อเข่าเจ็บน้อย'],
+  ['@stair-climb', 'เดินขึ้นบันได', 'Stair Climbing', 'cardio', 'body', 'i', ['glutes', 'quadriceps'], ['calves', 'hamstrings'], 'w', 'ก้าวเต็มเท้า ลำตัวตั้งตรง ขึ้นบันไดเป็นคาร์ดิโอที่ช่วยกระชับก้น'],
+  ['@star-jump', 'กระโดดสตาร์', 'Star Jumps', 'cardio', 'body', 'b', ['quadriceps', 'calves'], ['shoulders', 'glutes'], 'k', 'ย่อตัวแล้วกระโดดกางแขนขาเป็นรูปดาว ลงนุ่มๆ'],
+  ['@bear-crawl', 'เดินหมี', 'Bear Crawl', 'cardio', 'body', 'b', ['shoulders', 'abdominals'], ['chest', 'triceps', 'quadriceps'], 'k', 'คลานด้วยมือและเท้า เข่าลอยเหนือพื้น หลังตรง เล่นเป็นเกมสัตว์ได้'],
+  ['@crab-walk', 'เดินปู', 'Crab Walk', 'cardio', 'body', 'b', ['triceps', 'glutes'], ['shoulders', 'abdominals', 'hamstrings'], 'k', 'นั่งมือยันพื้นด้านหลัง ยกสะโพกแล้วเดินไปข้างหลัง/ข้างหน้า'],
+  ['@frog-jump', 'กบกระโดด', 'Frog Jumps', 'cardio', 'body', 'b', ['quadriceps', 'glutes'], ['calves', 'abdominals'], 'k', 'ย่อลงต่ำมือแตะพื้นแล้วกระโดดไปข้างหน้าเหมือนกบ'],
+  ['@hopscotch', 'กระโดดตาราง', 'Hopscotch', 'cardio', 'body', 'b', ['calves', 'quadriceps'], ['glutes', 'abdominals'], 'k', 'กระโดดขาเดียว/สองขาตามช่องตารางที่วาดไว้ ฝึกการทรงตัวและการประสานงาน'],
+  ['@tree-pose', 'ท่าต้นไม้ (ยืนขาเดียว)', 'Tree Pose', 'stretching', 'body', 'b', ['abductors', 'quadriceps'], ['calves', 'abdominals', 'adductors'], 'wk', 'ยืนขาเดียว ประกบเท้าอีกข้างที่น่อง/ต้นขาด้านใน มองจุดเดียว ฝึกสมาธิและการทรงตัว'],
+  ['@hula-hoop', 'หมุนฮูลาฮูป', 'Hula Hoop', 'cardio', 'light', 'b', ['abdominals'], ['lower back', 'glutes', 'abductors'], 'wk', 'หมุนห่วงรอบเอว 5–10 นาที เสริมกล้ามท้องด้านข้างและเผาผลาญ'],
+  ['@fire-hydrant', 'ไฟร์ไฮแดรนท์ (ยกขาข้างคลานสี่ขา)', 'Fire Hydrant', 'strength', 'body', 'b', ['abductors', 'glutes'], ['abdominals', 'quadriceps'], 'w', 'คลานสี่ขา ยกเข่าออกด้านข้างเหมือนสุนัขฉี่ ไม่ให้สะโพกบิด ช่วยกระชับสะโพกด้านข้าง'],
+  ['@clamshell', 'คลามเชลล์ (นอนตะแคงเปิดเข่า)', 'Clamshell', 'strength', 'body', 'b', ['abductors', 'glutes'], ['adductors'], 'w', 'นอนตะแคง งอเข่า ส้นเท้าชิดกัน เปิดเข่าบนขึ้นเหมือนหอยกาบ เหมาะกับคนปวดเข่า/สะโพก'],
+  ['@donkey-kick', 'ดังกี้คิก (เตะขาไปด้านหลัง)', 'Donkey Kick', 'strength', 'body', 'b', ['glutes'], ['hamstrings', 'lower back'], 'w', 'คลานสี่ขา เตะส้นเท้าขึ้นฟ้าโดยงอเข่า 90° บีบก้นที่ด้านบน ไม่แอ่นหลัง'],
+  ['@curtsy-lunge', 'เคิร์ทซีลันจ์ (ลันจ์ไขว้ขา)', 'Curtsy Lunge', 'strength', 'body', 'i', ['glutes', 'quadriceps'], ['adductors', 'abductors', 'hamstrings'], 'w', 'ก้าวขาข้างหนึ่งไขว้ไปด้านหลังเหมือนถอนสายบัว ใช้ก้นและสะโพกด้านข้างหนักกว่าลันจ์ปกติ'],
+  ['@sumo-squat', 'ซูโม่สควอท (ยืนกว้าง)', 'Sumo Squat', 'strength', 'body', 'b', ['glutes', 'adductors'], ['quadriceps', 'hamstrings'], 'w', 'ยืนกว้างกว่าไหล่ ปลายเท้าชี้ออก ย่อลงตรงๆ เน้นก้นและต้นขาด้านใน'],
+  ['@side-lying-leg-raise', 'นอนตะแคงยกขา', 'Side-Lying Leg Raise', 'strength', 'body', 'b', ['abductors', 'glutes'], ['quadriceps'], 'w', 'นอนตะแคง ยกขาบนขึ้นช้าๆ ปลายเท้าชี้ตรง ไม่เอนตัวไปด้านหลัง'],
+  ['@bird-dog', 'เบิร์ดด็อก', 'Bird Dog', 'strength', 'body', 'b', ['lower back', 'glutes'], ['abdominals', 'shoulders', 'hamstrings'], 'wk', 'คลานสี่ขา เหยียดแขนขวาตรงข้ามกับขาซ้ายให้ตรงเป็นแนวเดียว ค้าง 2–3 วินาที ฝึกความมั่นคงของลำตัว'],
+  ['@pilates-hundred', 'พิลาทิส ฮันเดรด', 'Pilates Hundred', 'strength', 'body', 'i', ['abdominals'], ['shoulders', 'hip flexors'], 'w', 'นอนหงาย ยกหัว-ไหล่-ขาลอย ตบแขนขึ้นลงเร็วๆ 100 ครั้ง หายใจเข้า 5 ออก 5'],
+  ['@wall-sit', 'นั่งพิงกำแพง', 'Wall Sit', 'strength', 'body', 'b', ['quadriceps', 'glutes'], ['calves', 'abdominals'], 'wk', 'พิงหลังกับผนัง ย่อเข่า 90° ค้างไว้ 20–60 วินาที ง่ายแต่เมื่อยมาก'],
+  ['@kneeling-pushup', 'วิดพื้นคุกเข่า', 'Kneeling Push-Up', 'strength', 'body', 'b', ['chest', 'triceps'], ['shoulders', 'abdominals'], 'wk', 'คุกเข่าบนพื้นแทนปลายเท้า เหมาะกับผู้เริ่มต้นหรือเด็ก ลำตัวตรงจากศีรษะถึงเข่า']
+];
+const WOMEN_EXTRA = new Set(['Barbell_Hip_Thrust', 'Butt_Lift_Bridge', 'Single_Leg_Glute_Bridge', 'Glute_Kickback', 'Goblet_Squat', 'Bodyweight_Squat', 'Dumbbell_Lunges', 'Bodyweight_Walking_Lunge',
+  'Split_Squat_with_Dumbbells', 'Dumbbell_Step_Ups', 'Dead_Bug', 'Plank', 'Air_Bike', 'Russian_Twist', 'Superman', 'Side_Lateral_Raise', 'Reverse_Flyes', 'Incline_Push-Up', 'Mountain_Climbers',
+  'Dumbbell_Shoulder_Press', 'Seated_Cable_Rows', 'Wide-Grip_Lat_Pulldown', 'Rope_Jumping', 'Walking_Treadmill', 'Dumbbell_Squat', 'Romanian_Deadlift', 'Leg_Press', 'Triceps_Pushdown']);
+const KIDS_EXTRA = new Set(['Bodyweight_Squat', 'Incline_Push-Up', 'Plank', 'Superman', 'Mountain_Climbers', 'Rope_Jumping', 'Dead_Bug', 'Butt_Lift_Bridge', 'Bodyweight_Walking_Lunge', 'Crunches', 'Air_Bike']);
+
+/* ---------- รวมข้อมูลทั้งหมด ---------- */
+const _CUR = new Map(_EX.map(r => [r[0], r]));
+const _DBM = new Map(DB.map(r => [r[0], r]));
+const EX = (() => {
+  const mk = (id, en, th, cat, eq, lvl, pm, sm, aud) => ({ id, en, th, cat, eq, lvl, pm, sm, aud, m: cat === 'cardio' ? 'cardio' : (GROUP_OF[pm[0]] || 'core'), tip: '', db: true });
+  const fromRow = r => mk(r[0], r[1], r[2] || r[1], r[3], r[4], r[5], r[6], r[7], r[8]);
+  const out = [];
+  _EX.forEach(c => {  // ท่าคัดสรร (ไทยเขียนเอง) มาก่อน
+    const r = _DBM.get(c[0]); const e = r ? fromRow(r) : mk(c[0], c[2], c[1], 'strength', c[4], 'b', [], [], '');
+    Object.assign(e, { th: c[1], en: c[2], m: c[3], eq: c[4], tip: c[5] });
+    if (c[3] === 'cardio') e.cat = 'cardio';
+    if (WOMEN_EXTRA.has(e.id) && !e.aud.includes('w')) e.aud += 'w';
+    if (KIDS_EXTRA.has(e.id) && !e.aud.includes('k')) e.aud += 'k';
+    if (FOCUS[e.id]) e.focus = FOCUS[e.id];
+    e.top = true; out.push(e);
+  });
+  _EXTRA.forEach(x => out.push({ id: x[0], th: x[1], en: x[2], cat: x[3], eq: x[4], lvl: x[5], pm: x[6], sm: x[7], aud: x[8], tip: x[9], m: x[3] === 'cardio' ? 'cardio' : (GROUP_OF[x[6][0]] || 'core'), db: false, top: true }));
+  const rank = { strength: 0, stretching: 1, cardio: 2, plyo: 3, special: 4 };
+  DB.filter(r => !_CUR.has(r[0])).map(fromRow).sort((a, b) => rank[a.cat] - rank[b.cat]).forEach(e => out.push(e));
+  return out;
+})();
 
 /* เทมเพลตโปรแกรม: [exId, sets, reps, restSec] */
 const TEMPLATES = {

@@ -74,13 +74,13 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch (e) { toast('พื้นที่จัดเก็บเต็ม — กรุณาสำรองข้อมูลและลบรูปที่ไม่ใช้'); }
 }
-const ui = { lp: 'all', cm: 'week', cd: today(), cf: 'all', cq: '', ct: 'hist', pd: 0, lm: 'all', lq: '' };
+const ui = { lc: 'all', ln: 48, lp: 'all', cm: 'week', cd: today(), cf: 'all', cq: '', ct: 'hist', pd: 0, lm: 'all', lq: '' };
 const client = id => S.clients.find(c => c.id === id);
 const prog = id => S.programs.find(p => p.id === id);
 
 /* ---------- exercises ---------- */
 let _exMap = null;
-function allEx() { return EX.concat(S.customEx.map(e => ({ ...e, custom: true }))); }
+function allEx() { return EX.concat(S.customEx.map(e => ({ cat: 'strength', pm: e.pm || [], sm: [], aud: '', lvl: 'b', ...e, custom: true }))); }
 function exById(id) {
   if (!_exMap) _exMap = new Map(allEx().map(e => [e.id, e]));
   return _exMap.get(id) || { id, th: '(ท่าที่ถูกลบ)', en: '', m: 'core', eq: 'other', tip: '', db: false };
@@ -448,20 +448,36 @@ function clientInfo(c, st) {
 }
 
 /* ----- library ----- */
+function filterEx(f) {
+  const q = (f.q || '').trim().toLowerCase();
+  return allEx().filter(e => (!f.m || f.m === 'all' || e.m === f.m) && (!f.c || f.c === 'all' || e.cat === f.c)
+    && (!f.p || f.p === 'all' || (f.p === 'home' ? homeOk(e) : (e.aud || '').includes(f.p === 'women' ? 'w' : 'k')))
+    && (!q || (e.th + ' ' + (e.en || '')).toLowerCase().includes(q)));
+}
+const mTh = m => (MUSCLE_INFO[m]?.th || m).replace(/ \(.*\)/, '');
 function libList() {
-  const q = ui.lq.trim().toLowerCase();
-  const l = allEx().filter(e => (ui.lm === 'all' || e.m === ui.lm) && (ui.lp !== 'home' || homeOk(e)) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
-  if (!l.length) return '<div class="empty"><div class="big">🔍</div>ไม่พบท่าที่ค้นหา</div>';
-  return '<div class="grid2">' + l.map(e => `<div class="excard" data-a="openEx" data-id="${esc(e.id)}">${media(e)}<div class="nm">${esc(e.th)}<small>${esc(e.en)}</small></div></div>`).join('') + '</div>';
+  const l = filterEx({ q: ui.lq, m: ui.lm, c: ui.lc, p: ui.lp });
+  let h = '';
+  if (ui.lp === 'kids') h += `<div class="card" style="background:rgba(91,108,255,.1);box-shadow:none;font-size:14px">🧒 <b>ท่าสำหรับเด็ก</b> — ใช้น้ำหนักตัวหรืออุปกรณ์เบามาก เน้นความสนุกและท่าทางที่ถูกต้อง มีผู้ใหญ่ดูแลเสมอ ไม่ควรยกหนักหรือฝึกจนล้า (เด็กควรได้เล่นออกแรงรวมวันละ ~60 นาที)</div>`;
+  if (ui.lp === 'women') h += `<div class="card" style="background:rgba(236,72,153,.1);box-shadow:none;font-size:14px">👩 <b>ท่าที่เหมาะกับผู้หญิง</b> — เน้นก้น สะโพก ต้นขา และแกนกลางลำตัว เพื่อความกระชับและแข็งแรง การเล่นเวทไม่ทำให้ตัวใหญ่เกินไป เริ่มจากน้ำหนักเบาแล้วค่อยเพิ่ม</div>`;
+  h += `<div class="sub" style="margin:0 4px 8px">พบ ${l.length} ท่า</div>`;
+  if (!l.length) return h + '<div class="empty"><div class="big">🔍</div>ไม่พบท่าที่ค้นหา</div>';
+  h += '<div class="grid2">' + l.slice(0, ui.ln).map(e => `<div class="excard" data-a="openEx" data-id="${esc(e.id)}">${media(e)}<div class="nm">${esc(e.th)}<small>${esc(e.en && e.en !== e.th ? e.en : '')}</small>
+    <small style="margin-top:4px">${CAT_E[e.cat] || ''} ${(e.pm && e.pm.length) ? esc(e.pm.slice(0, 2).map(mTh).join(', ')) : esc((MUSCLES[e.m] || MUSCLES.core).th)}</small></div></div>`).join('') + '</div>';
+  if (l.length > ui.ln) h += `<button class="btn block" style="margin-top:14px;background:var(--card);box-shadow:var(--sh)" data-a="libMore">แสดงเพิ่ม (เหลืออีก ${l.length - ui.ln} ท่า)</button>`;
+  return h;
 }
 function vLib() {
   const ch = (k, l) => `<button class="chip ${ui.lm === k ? 'on' : ''}" data-a="libM" data-k="${k}">${l}</button>`;
+  const cc = (k, l) => `<button class="chip ${ui.lc === k ? 'on' : ''}" data-a="libC" data-k="${k}">${l}</button>`;
+  const pp = (k, l) => `<button class="${ui.lp === k ? 'on' : ''}" data-a="libP" data-k="${k}">${l}</button>`;
   return hdr('คลังท่าออกกำลังกาย', { right: `<button class="ib acc" data-a="newEx" aria-label="เพิ่มท่า">${ic('plus')}</button>` }) +
-    `<div class="search">${ic('search')}<input id="lq" type="search" placeholder="ค้นหาท่า (ไทย/English)" value="${esc(ui.lq)}" autocomplete="off"></div>
-    <div class="seg card-bg" style="margin-bottom:10px"><button class="${ui.lp === 'all' ? 'on' : ''}" data-a="libP" data-k="all">ทุกท่า</button><button class="${ui.lp === 'home' ? 'on' : ''}" data-a="libP" data-k="home">🏠 ทำที่บ้านได้</button></div>
-    <div class="chips">${ch('all', 'ทั้งหมด')}${Object.entries(MUSCLES).map(([k, v]) => ch(k, v.e + ' ' + v.th)).join('')}</div>
+    `<div class="search">${ic('search')}<input id="lq" type="search" placeholder="ค้นหา ${allEx().length} ท่า (ไทย/English)" value="${esc(ui.lq)}" autocomplete="off"></div>
+    <div class="seg card-bg" style="margin-bottom:10px">${pp('all', 'ทุกท่า')}${pp('home', '🏠 บ้าน')}${pp('women', '👩 ผู้หญิง')}${pp('kids', '🧒 เด็ก')}</div>
+    <div class="chips">${cc('all', 'ทุกประเภท')}${Object.entries(CAT_TH).map(([k, v]) => cc(k, CAT_E[k] + ' ' + v)).join('')}</div>
+    <div class="chips" style="padding-top:0">${ch('all', 'ทุกกล้ามเนื้อ')}${Object.entries(MUSCLES).map(([k, v]) => ch(k, v.e + ' ' + v.th)).join('')}</div>
     <div id="liblist">${libList()}</div>
-    <div class="sub" style="text-align:center;margin-top:18px">ภาพประกอบ: free-exercise-db • แตะท่าเพื่อดูภาพเคลื่อนไหวและวิดีโอสาธิต</div>`;
+    <div class="sub" style="text-align:center;margin-top:18px">ภาพประกอบ: free-exercise-db • แตะท่าเพื่อดูภาพเคลื่อนไหว กล้ามเนื้อที่ใช้ และวิดีโอสาธิต</div>`;
 }
 
 /* ----- program ----- */
@@ -691,14 +707,59 @@ forms.metric = d => {
 };
 
 /* --- exercise detail & custom --- */
+const BM = {
+  front: [['neck', 'r', 45, 24, 10, 7, 3], ['shoulders', 'e', 32, 38, 8, 7], ['shoulders', 'e', 68, 38, 8, 7], ['chest', 'e', 42, 48, 9, 8], ['chest', 'e', 58, 48, 9, 8], ['abdominals', 'r', 41, 58, 18, 28, 6],
+    ['biceps', 'e', 23, 56, 5, 11], ['biceps', 'e', 77, 56, 5, 11], ['forearms', 'e', 17, 83, 4.5, 13], ['forearms', 'e', 83, 83, 4.5, 13], ['hip flexors', 'e', 44, 95, 4, 6], ['hip flexors', 'e', 56, 95, 4, 6],
+    ['abductors', 'e', 30, 94, 4.5, 7], ['abductors', 'e', 70, 94, 4.5, 7], ['adductors', 'e', 46.5, 114, 3.5, 14], ['adductors', 'e', 53.5, 114, 3.5, 14], ['quadriceps', 'e', 38, 115, 8, 22], ['quadriceps', 'e', 62, 115, 8, 22],
+    ['calves', 'e', 38, 167, 5.5, 18], ['calves', 'e', 62, 167, 5.5, 18]],
+  back: [['traps', 'e', 50, 35, 13, 7], ['shoulders', 'e', 32, 38, 8, 7], ['shoulders', 'e', 68, 38, 8, 7], ['lats', 'e', 40, 58, 8, 13], ['lats', 'e', 60, 58, 8, 13], ['middle back', 'r', 44, 42, 12, 14, 4],
+    ['lower back', 'r', 43, 63, 14, 14, 4], ['triceps', 'e', 23, 56, 5, 11], ['triceps', 'e', 77, 56, 5, 11], ['forearms', 'e', 17, 83, 4.5, 13], ['forearms', 'e', 83, 83, 4.5, 13], ['abductors', 'e', 30, 92, 4.5, 6],
+    ['abductors', 'e', 70, 92, 4.5, 6], ['glutes', 'e', 42, 94, 9, 8], ['glutes', 'e', 58, 94, 9, 8], ['hamstrings', 'e', 39, 124, 8, 20], ['hamstrings', 'e', 61, 124, 8, 20], ['calves', 'e', 38, 168, 6, 17], ['calves', 'e', 62, 168, 6, 17]]
+};
+function bodyMap(e) {
+  const P = new Set(e.pm || []), Sx = new Set(e.sm || []);
+  const draw = (arr) => arr.map(([m, t, a, b, c, d, r]) => {
+    const f = P.has(m) ? 'var(--acc)' : Sx.has(m) ? 'var(--acc)' : 'var(--card)', o = P.has(m) ? 1 : Sx.has(m) ? .4 : .75;
+    return t === 'e' ? `<ellipse cx="${a}" cy="${b}" rx="${c}" ry="${d}" fill="${f}" opacity="${o}"/>` : `<rect x="${a}" y="${b}" width="${c}" height="${d}" rx="${r}" fill="${f}" opacity="${o}"/>`;
+  }).join('');
+  const base = `<g stroke="var(--line)" stroke-linecap="round" fill="none"><path d="M34 36 L19 60 L16 92" stroke-width="11"/><path d="M66 36 L81 60 L84 92" stroke-width="11"/><path d="M42 98 L38 172" stroke-width="17"/><path d="M58 98 L62 172" stroke-width="17"/></g>
+    <rect x="34" y="28" width="32" height="70" rx="13" fill="var(--line)"/><circle cx="50" cy="14" r="10" fill="var(--line)"/>`;
+  const one = (arr, lbl) => `<div style="text-align:center"><svg viewBox="0 0 100 190" width="100%" style="max-width:150px">${base}${draw(arr)}</svg><div class="sub" style="font-size:12px">${lbl}</div></div>`;
+  return `<div style="display:flex;gap:12px;justify-content:center;margin:4px 0 8px">${one(BM.front, 'ด้านหน้า')}${one(BM.back, 'ด้านหลัง')}</div>
+    <div style="display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--mut);margin-bottom:6px"><span><i style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--acc);vertical-align:-1px"></i> กล้ามเนื้อหลัก</span><span><i style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--acc);opacity:.4;vertical-align:-1px"></i> กล้ามเนื้อรอง</span></div>`;
+}
+function tipFor(e) {
+  if (e.tip) return e.tip;
+  if (e.cat === 'stretching') return 'ยืดจนรู้สึกตึงพอประมาณ (ไม่เจ็บ) ค้างไว้ 20–30 วินาที ทำ 2–3 รอบต่อข้าง หายใจเข้า-ออกช้าๆ ไม่กระตุกหรือเด้งตัว';
+  if (e.cat === 'cardio') return 'เริ่มช้าๆ 3–5 นาทีเพื่อวอร์มอัพ แล้วค่อยเพิ่มความเร็ว ระดับพอดีคือพูดเป็นประโยคสั้นๆ ได้';
+  if (e.cat === 'plyo') return 'วอร์มอัพให้พร้อมก่อน ลงพื้นนุ่มๆ งอเข่ารับแรง พักให้เต็มระหว่างเซ็ต หยุดเมื่อท่าเริ่มเสีย';
+  if (e.cat === 'special') return 'ท่าขั้นสูง ควรเรียนกับเทรนเนอร์ ใช้น้ำหนักเบาฝึกเทคนิคก่อนเสมอ';
+  return e.lvl === 'e' ? 'ท่ายาก ควรมีผู้ดูแล และฝึกท่าทางด้วยน้ำหนักเบาก่อน'
+    : e.lvl === 'i' ? 'คุมท่าให้นิ่ง ไม่เหวี่ยงตัว ลงช้า 2–3 วินาที เพิ่มน้ำหนักเมื่อทำครบเซ็ตได้สบาย'
+      : 'เริ่มด้วยน้ำหนักเบาเพื่อให้ท่าถูกต้อง แล้วค่อยเพิ่มน้ำหนัก ควบคุมจังหวะขึ้น-ลงให้ช้า';
+}
+function muscleBlock(e) {
+  const pm = e.pm || [], sm = e.sm || []; if (!pm.length && !sm.length) return '';
+  const st = e.cat === 'stretching';
+  const row = (m, full) => { const i = MUSCLE_INFO[m] || { th: m, sub: '', d: '' };
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--line)"><b>${esc(i.th)}</b>${i.sub ? `<div class="sub" style="font-size:12px">${esc(i.sub)}</div>` : ''}${full && i.d ? `<div style="font-size:13.5px;margin-top:3px">${esc(i.d)}</div>` : ''}</div>`; };
+  return `<div class="card"><h3>${st ? '🧘 ยืดแล้วโดนกล้ามเนื้อส่วนนี้' : '🎯 กล้ามเนื้อที่ใช้'}</h3>${bodyMap(e)}
+    ${e.focus ? `<div style="background:rgba(255,90,60,.1);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:6px">🔎 <b>เน้นที่:</b> ${esc(e.focus)}</div>` : ''}
+    ${pm.length ? `<div class="mh">${st ? 'ตึงที่สุด (กล้ามเนื้อหลักที่ถูกยืด)' : 'กล้ามเนื้อหลัก'}</div>${pm.map(m => row(m, true)).join('')}` : ''}
+    ${sm.length ? `<div class="mh">${st ? 'ยืดเพิ่มเติมที่รู้สึกได้' : 'กล้ามเนื้อรอง (ช่วยออกแรง)'}</div>${sm.map(m => row(m, false)).join('')}` : ''}</div>`;
+}
 function openEx(id) {
   const e = exById(id), mu = MUSCLES[e.m] || MUSCLES.core;
+  const tags = `<span class="tag">${mu.e} ${mu.th}</span>${e.cat ? `<span class="tag">${CAT_E[e.cat] || ''} ${CAT_TH[e.cat] || ''}</span>` : ''}<span class="tag">${esc(EQUIP[e.eq] || '')}</span>${e.lvl ? `<span class="tag">ระดับ${LEVEL_TH[e.lvl]}</span>` : ''}${homeOk(e) ? '<span class="tag">🏠 ทำที่บ้านได้</span>' : ''}${(e.aud || '').split('').map(a => AUD[a] ? `<span class="tag">${AUD[a].e} ${AUD[a].th}</span>` : '').join('')}${e.custom ? '<span class="tag">ท่าของฉัน</span>' : ''}`;
   sheet(esc(e.th), `<div style="border-radius:18px;overflow:hidden;margin-bottom:12px">${media(e, 'wide contain')}</div>
-    <div class="sub" style="margin:-2px 2px 8px">${esc(e.en)}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><span class="tag">${mu.e} ${mu.th}</span><span class="tag">${esc(EQUIP[e.eq] || '')}</span>${e.custom ? '<span class="tag">ท่าของฉัน</span>' : ''}</div>
-    ${e.tip ? `<div class="card"><h3>💡 เทคนิค</h3><div style="font-size:15px">${esc(e.tip)}</div></div>` : ''}
-    <a class="btn pri block" style="text-decoration:none;padding:14px" href="${esc(ytLink(e))}" target="_blank" rel="noopener">${ic('video', 's')} ดูวิดีโอสาธิต</a>
-    ${e.custom ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn" data-a="editEx" data-id="${esc(e.id)}">${ic('edit', 's')} แก้ไข</button><button class="btn bad" data-a="delEx" data-id="${esc(e.id)}">${ic('trash', 's')} ลบ</button></div>` : ''}`, { tall: false });
+    ${e.en && e.en !== e.th ? `<div class="sub" style="margin:-2px 2px 8px">${esc(e.en)}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tags}</div>
+    <a class="btn pri block" style="text-decoration:none;padding:14px;margin-bottom:12px" href="${esc(ytLink(e))}" target="_blank" rel="noopener">${ic('video', 's')} ดูวิดีโอสาธิต</a>
+    <div class="card"><h3>💡 เทคนิคและข้อควรระวัง</h3><div style="font-size:15px">${esc(tipFor(e))}</div>
+      ${(e.aud || '').includes('k') ? '<div class="sub" style="margin-top:8px">🧒 สำหรับเด็ก: มีผู้ใหญ่ดูแล ไม่ใช้น้ำหนักหนัก เน้นสนุกและท่าทางที่ถูกต้อง</div>' : ''}
+      ${e.cat === 'stretching' ? '<div class="sub" style="margin-top:8px">ถ้ารู้สึกปวดแปลบ ชา หรือเสียวให้หยุดทันที</div>' : ''}</div>
+    ${muscleBlock(e)}
+    ${e.custom ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn" data-a="editEx" data-id="${esc(e.id)}">${ic('edit', 's')} แก้ไข</button><button class="btn bad" data-a="delEx" data-id="${esc(e.id)}">${ic('trash', 's')} ลบ</button></div>` : ''}`, { tall: true });
 }
 let tmpImg = '';
 function exForm(id) {
@@ -707,6 +768,7 @@ function exForm(id) {
     ${fld('ชื่อท่า *', `<input name="th" required value="${esc(e?.th)}">`)}
     <div class="row2">${fld('กล้ามเนื้อหลัก', `<select name="m">${Object.entries(MUSCLES).map(([k, v]) => `<option value="${k}" ${e?.m === k ? 'selected' : ''}>${v.th}</option>`).join('')}</select>`)}
     ${fld('อุปกรณ์', `<select name="eq">${Object.entries(EQUIP).map(([k, v]) => `<option value="${k}" ${e?.eq === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
+    ${fld('กล้ามเนื้อที่ใช้เป็นหลัก (แสดงบนภาพร่างกาย)', `<select name="pm"><option value="">— ไม่ระบุ —</option>${Object.entries(MUSCLE_INFO).map(([k, v]) => `<option value="${k}" ${e?.pm?.[0] === k ? 'selected' : ''}>${v.th}</option>`).join('')}</select>`)}
     ${fld('เทคนิค/คำแนะนำ', `<textarea name="tip">${esc(e?.tip)}</textarea>`)}
     <div class="fld"><span>รูปภาพ (ถ่ายหรือเลือกจากเครื่อง)</span><div id="exImgPrev" style="margin-bottom:8px">${tmpImg ? `<img src="${esc(tmpImg)}" style="width:120px;border-radius:12px">` : ''}</div>
       <input type="file" id="exFile" accept="image/*"></div>
@@ -714,7 +776,7 @@ function exForm(id) {
     <button class="btn pri block" style="padding:15px">บันทึก</button></form>`, { tall: true });
 }
 forms.ex = d => {
-  const o = { th: d.th.trim(), en: d.th.trim(), m: d.m, eq: d.eq, tip: d.tip.trim(), video: d.video.trim(), img: tmpImg };
+  const o = { th: d.th.trim(), en: d.th.trim(), m: d.m, eq: d.eq, tip: d.tip.trim(), video: d.video.trim(), img: tmpImg, pm: d.pm ? [d.pm] : [] };
   if (!o.th) return;
   if (d.id) Object.assign(S.customEx.find(x => x.id === d.id), o); else S.customEx.push({ id: 'c_' + uid(), ...o });
   resetEx(); save(); closeSheet(() => { render(); toast('บันทึกท่าแล้ว'); });
@@ -766,17 +828,19 @@ forms.item = d => {
 };
 let PK = null;
 function pickerSheet(pid) {
-  PK = { pid, sel: [], q: '', m: 'all', home: (prog(pid).place === 'home') };
+  PK = { pid, sel: [], q: '', m: 'all', c: 'all', home: (prog(pid).place === 'home') };
   const w = sheet('เพิ่มท่า', `<div class="search">${ic('search')}<input id="pq" type="search" placeholder="ค้นหาท่า" autocomplete="off"></div>
     <div class="chips" style="margin:0 -16px">${['all', ...Object.keys(MUSCLES)].map(k => `<button class="chip ${k === 'all' ? 'on' : ''}" data-a="pkM" data-k="${k}">${k === 'all' ? 'ทั้งหมด' : MUSCLES[k].e + ' ' + MUSCLES[k].th}</button>`).join('')}</div>
+    <div class="chips" style="margin:0 -16px;padding-top:0">${['all', ...Object.keys(CAT_TH)].map(k => `<button class="chip ${k === 'all' ? 'on' : ''}" data-a="pkC" data-k="${k}">${k === 'all' ? 'ทุกประเภท' : CAT_E[k] + ' ' + CAT_TH[k]}</button>`).join('')}</div>
     <label class="sw"><span>🏠 แสดงเฉพาะท่าที่ทำที่บ้านได้</span><input type="checkbox" ${PK.home ? 'checked' : ''} data-a="pkHome"></label><div id="pklist"></div>`, { tall: true, footer: `<button class="btn pri block" id="pkgo" data-a="pkAdd" style="padding:14px" disabled>เลือกท่าที่ต้องการ</button>` });
   pkRender();
 }
 function pkRender() {
   const q = PK.q.trim().toLowerCase();
-  const l = allEx().filter(e => (PK.m === 'all' || e.m === PK.m) && (!PK.home || homeOk(e)) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
+  const all = filterEx({ q: PK.q, m: PK.m, c: PK.c, p: PK.home ? 'home' : 'all' }), l = all.slice(0, 80);
   const el = $('#pklist'); if (!el) return;
-  el.innerHTML = l.map(e => `<div class="pick ${PK.sel.includes(e.id) ? 'on' : ''}" data-a="pkToggle" data-id="${esc(e.id)}">${media(e, 'thumb')}<div class="n">${esc(e.th)}<small>${(MUSCLES[e.m] || MUSCLES.core).th} • ${esc(EQUIP[e.eq] || '')}</small></div><div class="ck">${ic('check', 's')}</div></div>`).join('') || '<div class="empty">ไม่พบท่า</div>';
+  el.innerHTML = l.map(e => `<div class="pick ${PK.sel.includes(e.id) ? 'on' : ''}" data-a="pkToggle" data-id="${esc(e.id)}">${media(e, 'thumb')}<div class="n">${esc(e.th)}<small>${(MUSCLES[e.m] || MUSCLES.core).th} • ${CAT_TH[e.cat] || ''} • ${esc(EQUIP[e.eq] || '')}</small></div><div class="ck">${ic('check', 's')}</div></div>`).join('') || '<div class="empty">ไม่พบท่า</div>';
+  if (all.length > 80) el.innerHTML += `<div class="sub" style="text-align:center;padding:10px">แสดง 80 จาก ${all.length} ท่า — พิมพ์ค้นหาหรือเลือกหมวดเพื่อกรอง</div>`;
   const b = $('#pkgo'); if (b) { b.disabled = !PK.sel.length; b.textContent = PK.sel.length ? `เพิ่ม ${PK.sel.length} ท่า` : 'เลือกท่าที่ต้องการ'; }
 }
 
@@ -867,8 +931,10 @@ const A = {
   expShare() { if (EXP?.blob) shareOrDownload(EXP.blob, EXP.file, EXP.file); },
   expDl() { if (!EXP?.blob) return; const a = document.createElement('a'); a.href = EXP.url; a.download = EXP.file; document.body.appendChild(a); a.click(); a.remove(); toast('บันทึกรูปแล้ว'); },
   /* library */
-  libM(d) { ui.lm = d.k; render(); },
-  libP(d) { ui.lp = d.k; render(); },
+  libM(d) { ui.lm = d.k; ui.ln = 48; render(); },
+  libP(d) { ui.lp = d.k; ui.ln = 48; render(); },
+  libC(d) { ui.lc = d.k; ui.ln = 48; render(); },
+  libMore() { ui.ln += 60; $('#liblist').innerHTML = libList(); },
   openEx(d) { openEx(d.id); },
   newEx() { exForm(); },
   editEx(d) { closeSheet(() => exForm(d.id)); },
@@ -912,11 +978,15 @@ const A = {
     if (sheetEl) closeSheet(go_); else go_();
   },
   pkM(d) { PK.m = d.k; $$('[data-a=pkM]').forEach(b => b.classList.toggle('on', b.dataset.k === d.k)); pkRender(); },
+  pkC(d) { PK.c = d.k; $$('[data-a=pkC]').forEach(b => b.classList.toggle('on', b.dataset.k === d.k)); pkRender(); },
   pkHome(d, el) { PK.home = el.checked; pkRender(); },
   pkToggle(d) { const i = PK.sel.indexOf(d.id); i >= 0 ? PK.sel.splice(i, 1) : PK.sel.push(d.id); pkRender(); },
   pkAdd() {
     const p = prog(PK.pid), g = p.goal, dy = p.days[ui.pd];
-    PK.sel.forEach(id => { const e = exById(id), cardio = e.m === 'cardio'; dy.items.push({ id: uid(), ex: id, sets: cardio ? 1 : 3, reps: cardio ? '10 นาที' : g === 'fat' ? '12–15' : '8–12', rest: cardio ? 0 : g === 'fat' ? 45 : 90, weight: '', note: '' }); });
+    PK.sel.forEach(id => {
+      const e = exById(id), cardio = e.m === 'cardio', st = e.cat === 'stretching';
+      dy.items.push({ id: uid(), ex: id, sets: st ? 2 : cardio ? 1 : 3, reps: st ? '30 วินาที/ข้าง' : cardio ? '10 นาที' : g === 'fat' ? '12–15' : '8–12', rest: st || cardio ? 0 : g === 'fat' ? 45 : 90, weight: '', note: '' });
+    });
     save(); closeSheet(() => render());
   },
   /* train */
@@ -1012,7 +1082,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'cq') { ui.cq = e.target.value; $('#clist').innerHTML = clientRows(clientData()); }
-  else if (e.target.id === 'lq') { ui.lq = e.target.value; $('#liblist').innerHTML = libList(); }
+  else if (e.target.id === 'lq') { ui.lq = e.target.value; ui.ln = 48; $('#liblist').innerHTML = libList(); }
   else if (e.target.id === 'pq') { PK.q = e.target.value; pkRender(); }
 });
 document.addEventListener('submit', e => {

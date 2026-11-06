@@ -26,4 +26,4 @@
 - ภาพท่าออกกำลังกายโหลดจาก free-exercise-db ผ่าน jsDelivr (ต้องมีเน็ตครั้งแรก จากนั้นแคชไว้)
 
 ## ไฟล์
-`index.html` `styles.css` `app.js` (ตัวแอป) · `export.js` (สร้างรูปตาราง/โปรแกรม) · `exercises.js` (ท่า+เทมเพลต) · `sw.js` `manifest.webmanifest` `icons/`
+`index.html` `styles.css` `app.js` (ตัวแอป) · `export.js` (สร้างรูปตาราง/โปรแกรม) · `exercises.js` (ท่าคัดสรร+ข้อมูลกล้ามเนื้อ+เทมเพลต) · `exercises_db.js` (ฐานข้อมูล 876 ท่า) · `sw.js` `manifest.webmanifest` `icons/`
