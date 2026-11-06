@@ -74,7 +74,7 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch (e) { toast('พื้นที่จัดเก็บเต็ม — กรุณาสำรองข้อมูลและลบรูปที่ไม่ใช้'); }
 }
-const ui = { cm: 'week', cd: today(), cf: 'all', cq: '', ct: 'hist', pd: 0, lm: 'all', lq: '' };
+const ui = { lp: 'all', cm: 'week', cd: today(), cf: 'all', cq: '', ct: 'hist', pd: 0, lm: 'all', lq: '' };
 const client = id => S.clients.find(c => c.id === id);
 const prog = id => S.programs.find(p => p.id === id);
 
@@ -202,6 +202,8 @@ window.addEventListener('hashchange', () => { if (sheetEl) removeSheet(); render
 function hdr(title, o = {}) {
   return `<div class="hdr">${o.back ? `<button class="ib" data-a="back" aria-label="กลับ">${ic('l')}</button>` : ''}<h1 class="${o.sm ? 'sm' : ''}">${title}</h1>${o.right || ''}</div>`;
 }
+const placeTag = pl => { const x = PLACES[pl || 'gym']; return `<span class="tag">${x.e} ${x.th}</span>`; };
+const placeSeg = (v, name = 'place') => `<div class="fld"><span>สถานที่ฝึก</span><div class="seg">${Object.entries(PLACES).map(([k, x]) => `<label><input type="radio" name="${name}" value="${k}" ${v === k ? 'checked' : ''}><span>${x.e} ${x.th}</span></label>`).join('')}</div></div>`;
 const goalTag = g => `<span class="tag ${g}">${GOALS[g].e} ${GOALS[g].th}</span>`;
 
 /* ---------- session card ---------- */
@@ -408,7 +410,7 @@ function clientProgs(c) {
   let h = `<button class="btn pri block" style="margin-bottom:12px" data-a="newProgram" data-client="${c.id}">${ic('plus', 's')} สร้างโปรแกรมใหม่</button>`;
   if (!ps.length) return h + `<div class="card empty"><div class="big">📋</div>ยังไม่มีโปรแกรมเฉพาะบุคคล<br>สร้างจากเทมเพลต ลดไขมัน/สร้างกล้ามเนื้อ แล้วปรับแต่งได้</div>`;
   return h + ps.map(p => `<div class="pcard" data-go="/program/${p.id}" style="background:var(--card);box-shadow:var(--sh)"><div class="gi">${GOALS[p.goal].e}</div>
-    <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><div class="sub">${GOALS[p.goal].th} • ${p.days.length} วัน • ${p.days.reduce((a, d) => a + d.items.length, 0)} ท่า</div></div>${ic('r')}</div>`).join('');
+    <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><div class="sub">${GOALS[p.goal].th} • ${PLACES[p.place || 'gym'].th} • ${p.days.length} วัน • ${p.days.reduce((a, d) => a + d.items.length, 0)} ท่า</div></div>${ic('r')}</div>`).join('');
 }
 function clientBody(c) {
   const m = (c.metrics || []).slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -448,7 +450,7 @@ function clientInfo(c, st) {
 /* ----- library ----- */
 function libList() {
   const q = ui.lq.trim().toLowerCase();
-  const l = allEx().filter(e => (ui.lm === 'all' || e.m === ui.lm) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
+  const l = allEx().filter(e => (ui.lm === 'all' || e.m === ui.lm) && (ui.lp !== 'home' || homeOk(e)) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
   if (!l.length) return '<div class="empty"><div class="big">🔍</div>ไม่พบท่าที่ค้นหา</div>';
   return '<div class="grid2">' + l.map(e => `<div class="excard" data-a="openEx" data-id="${esc(e.id)}">${media(e)}<div class="nm">${esc(e.th)}<small>${esc(e.en)}</small></div></div>`).join('') + '</div>';
 }
@@ -456,6 +458,7 @@ function vLib() {
   const ch = (k, l) => `<button class="chip ${ui.lm === k ? 'on' : ''}" data-a="libM" data-k="${k}">${l}</button>`;
   return hdr('คลังท่าออกกำลังกาย', { right: `<button class="ib acc" data-a="newEx" aria-label="เพิ่มท่า">${ic('plus')}</button>` }) +
     `<div class="search">${ic('search')}<input id="lq" type="search" placeholder="ค้นหาท่า (ไทย/English)" value="${esc(ui.lq)}" autocomplete="off"></div>
+    <div class="seg card-bg" style="margin-bottom:10px"><button class="${ui.lp === 'all' ? 'on' : ''}" data-a="libP" data-k="all">ทุกท่า</button><button class="${ui.lp === 'home' ? 'on' : ''}" data-a="libP" data-k="home">🏠 ทำที่บ้านได้</button></div>
     <div class="chips">${ch('all', 'ทั้งหมด')}${Object.entries(MUSCLES).map(([k, v]) => ch(k, v.e + ' ' + v.th)).join('')}</div>
     <div id="liblist">${libList()}</div>
     <div class="sub" style="text-align:center;margin-top:18px">ภาพประกอบ: free-exercise-db • แตะท่าเพื่อดูภาพเคลื่อนไหวและวิดีโอสาธิต</div>`;
@@ -473,7 +476,7 @@ function vProgram(id) {
   const c = client(p.clientId); if (ui.pd >= p.days.length) ui.pd = 0;
   const d = p.days[ui.pd];
   let h = hdr(esc(p.name), { back: 1, sm: 1, right: `<button class="ib" data-a="progMenu" data-id="${p.id}" aria-label="เมนู">${ic('more')}</button>` });
-  h += `<div style="display:flex;gap:8px;align-items:center;margin:0 2px 12px;flex-wrap:wrap">${goalTag(p.goal)}${c ? `<span class="tag" style="--c:${c.color}" data-go="/client/${c.id}">${ic('user', 's')} ${esc(c.name)}</span>` : ''}</div>`;
+  h += `<div style="display:flex;gap:8px;align-items:center;margin:0 2px 12px;flex-wrap:wrap">${goalTag(p.goal)}${placeTag(p.place)}${c ? `<span class="tag" style="--c:${c.color}" data-go="/client/${c.id}">${ic('user', 's')} ${esc(c.name)}</span>` : ''}</div>`;
   h += `<div class="dtabs">${p.days.map((x, i) => `<button class="dtab ${i === ui.pd ? 'on' : ''}" data-a="pday" data-i="${i}">${esc(x.name.split('•')[0].trim())}</button>`).join('')}<button class="dtab" data-a="addDay" data-id="${p.id}">+ เพิ่มวัน</button></div>`;
   if (!d) return h + '<div class="empty">ยังไม่มีวันฝึก</div>';
   h += `<div class="card" style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><b>${esc(d.name)}</b><div class="sub">${d.items.length} ท่า</div></div>
@@ -563,6 +566,7 @@ function clientForm(id) {
     ${fld('ชื่อลูกเทรน *', `<input name="name" required value="${esc(c?.name)}" placeholder="เช่น คุณแพรว" autocapitalize="words">`)}
     ${fld('เบอร์โทร', `<input name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="08x-xxx-xxxx">`)}
     <div class="fld"><span>เป้าหมาย</span><div class="seg">${['fat', 'muscle'].map(g => `<label><input type="radio" name="goal" value="${g}" ${(c ? c.goal : 'fat') === g ? 'checked' : ''}><span>${GOALS[g].e} ${GOALS[g].th}</span></label>`).join('')}</div></div>
+    ${placeSeg(c?.place || 'gym')}
     <div class="fld"><span>สีในปฏิทิน</span><div class="swatches">${COLORS.map(x => `<label style="--c:${x}"><input type="radio" name="color" value="${x}" ${x === col ? 'checked' : ''}><span></span></label>`).join('')}</div></div>
     ${fld('ข้อควรระวัง/อาการบาดเจ็บ', `<textarea name="health" placeholder="เช่น เข่าซ้ายเคยบาดเจ็บ, ความดันสูง">${esc(c?.health)}</textarea>`)}
     ${fld('โน้ตอื่นๆ', `<textarea name="note">${esc(c?.note)}</textarea>`)}
@@ -574,9 +578,9 @@ function clientForm(id) {
 forms.client = d => {
   const name = (d.name || '').trim(); if (!name) return;
   if (d.id) {
-    const c = client(d.id); Object.assign(c, { name, phone: d.phone.trim(), goal: d.goal, color: d.color, health: d.health.trim(), note: d.note.trim() });
+    const c = client(d.id); Object.assign(c, { name, phone: d.phone.trim(), goal: d.goal, place: d.place, color: d.color, health: d.health.trim(), note: d.note.trim() });
   } else {
-    const c = { id: uid(), name, phone: d.phone.trim(), goal: d.goal, color: d.color, health: d.health.trim(), note: d.note.trim(), created: today(), packs: [], metrics: [], archived: false };
+    const c = { id: uid(), name, phone: d.phone.trim(), goal: d.goal, place: d.place, color: d.color, health: d.health.trim(), note: d.note.trim(), created: today(), packs: [], metrics: [], archived: false };
     if (d.startCourse) c.packs.push({ id: uid(), total: Math.max(1, +d.total || 10), prior: Math.max(0, +d.prior || 0), price: +d.price || 0, start: today() });
     S.clients.push(c);
   }
@@ -732,14 +736,15 @@ function newProgramForm(cid) {
   sheet('โปรแกรมใหม่ • ' + esc(c.name), `<form data-f="program" autocomplete="off"><input type="hidden" name="cid" value="${cid}">
     ${fld('ชื่อโปรแกรม', `<input name="name" value="โปรแกรมเดือน ${MON[new Date().getMonth()]}" required>`)}
     <div class="fld"><span>เป้าหมาย</span><div class="seg">${['fat', 'muscle'].map(g => `<label><input type="radio" name="goal" value="${g}" ${c.goal === g ? 'checked' : ''}><span>${GOALS[g].e} ${GOALS[g].th}</span></label>`).join('')}</div></div>
+    ${placeSeg(c.place || 'gym')}
     ${fld('เริ่มจาก', `<select name="tpl"><option value="auto">เทมเพลตตามเป้าหมายที่เลือก (แนะนำ)</option><option value="blank">โปรแกรมเปล่า</option></select>`)}
-    <div class="sub" style="margin-bottom:12px">เทมเพลตลดไขมัน: ${TEMPLATES.fat.label}<br>เทมเพลตสร้างกล้าม: ${TEMPLATES.muscle.label}<br>สร้างแล้วปรับท่า เซ็ต ครั้ง น้ำหนัก ได้ทั้งหมด</div>
+    <div class="sub" style="margin-bottom:12px">มีเทมเพลตครบ 4 แบบ: ลดไขมัน/สร้างกล้ามเนื้อ × ที่ยิม/ที่บ้าน<br>ที่บ้านใช้ท่าน้ำหนักตัวและดัมเบลเท่านั้น สร้างแล้วปรับท่า เซ็ต ครั้ง น้ำหนัก ได้ทั้งหมด</div>
     <button class="btn pri block" style="padding:15px">สร้างโปรแกรม</button></form>`);
 }
 forms.program = d => {
-  const p = { id: uid(), clientId: d.cid, name: d.name.trim() || 'โปรแกรม', goal: d.goal, created: today(), days: [] };
+  const p = { id: uid(), clientId: d.cid, name: d.name.trim() || 'โปรแกรม', goal: d.goal, place: d.place, created: today(), days: [] };
   if (d.tpl === 'auto') {
-    p.days = TEMPLATES[d.goal].days.map(dy => ({ id: uid(), name: dy.name, items: dy.items.map(([ex, sets, reps, rest]) => ({ id: uid(), ex, sets, reps, rest, weight: '', note: '' })) }));
+    p.days = TEMPLATES[d.goal + '_' + d.place].days.map(dy => ({ id: uid(), name: dy.name, items: dy.items.map(([ex, sets, reps, rest]) => ({ id: uid(), ex, sets, reps, rest, weight: '', note: '' })) }));
   } else p.days = [{ id: uid(), name: 'วันที่ 1', items: [] }];
   S.programs.push(p); save(); ui.pd = 0; closeSheet(() => go('/program/' + p.id));
 };
@@ -761,15 +766,15 @@ forms.item = d => {
 };
 let PK = null;
 function pickerSheet(pid) {
-  PK = { pid, sel: [], q: '', m: 'all' };
+  PK = { pid, sel: [], q: '', m: 'all', home: (prog(pid).place === 'home') };
   const w = sheet('เพิ่มท่า', `<div class="search">${ic('search')}<input id="pq" type="search" placeholder="ค้นหาท่า" autocomplete="off"></div>
     <div class="chips" style="margin:0 -16px">${['all', ...Object.keys(MUSCLES)].map(k => `<button class="chip ${k === 'all' ? 'on' : ''}" data-a="pkM" data-k="${k}">${k === 'all' ? 'ทั้งหมด' : MUSCLES[k].e + ' ' + MUSCLES[k].th}</button>`).join('')}</div>
-    <div id="pklist"></div>`, { tall: true, footer: `<button class="btn pri block" id="pkgo" data-a="pkAdd" style="padding:14px" disabled>เลือกท่าที่ต้องการ</button>` });
+    <label class="sw"><span>🏠 แสดงเฉพาะท่าที่ทำที่บ้านได้</span><input type="checkbox" ${PK.home ? 'checked' : ''} data-a="pkHome"></label><div id="pklist"></div>`, { tall: true, footer: `<button class="btn pri block" id="pkgo" data-a="pkAdd" style="padding:14px" disabled>เลือกท่าที่ต้องการ</button>` });
   pkRender();
 }
 function pkRender() {
   const q = PK.q.trim().toLowerCase();
-  const l = allEx().filter(e => (PK.m === 'all' || e.m === PK.m) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
+  const l = allEx().filter(e => (PK.m === 'all' || e.m === PK.m) && (!PK.home || homeOk(e)) && (!q || (e.th + ' ' + e.en).toLowerCase().includes(q)));
   const el = $('#pklist'); if (!el) return;
   el.innerHTML = l.map(e => `<div class="pick ${PK.sel.includes(e.id) ? 'on' : ''}" data-a="pkToggle" data-id="${esc(e.id)}">${media(e, 'thumb')}<div class="n">${esc(e.th)}<small>${(MUSCLES[e.m] || MUSCLES.core).th} • ${esc(EQUIP[e.eq] || '')}</small></div><div class="ck">${ic('check', 's')}</div></div>`).join('') || '<div class="empty">ไม่พบท่า</div>';
   const b = $('#pkgo'); if (b) { b.disabled = !PK.sel.length; b.textContent = PK.sel.length ? `เพิ่ม ${PK.sel.length} ท่า` : 'เลือกท่าที่ต้องการ'; }
@@ -863,6 +868,7 @@ const A = {
   expDl() { if (!EXP?.blob) return; const a = document.createElement('a'); a.href = EXP.url; a.download = EXP.file; document.body.appendChild(a); a.click(); a.remove(); toast('บันทึกรูปแล้ว'); },
   /* library */
   libM(d) { ui.lm = d.k; render(); },
+  libP(d) { ui.lp = d.k; render(); },
   openEx(d) { openEx(d.id); },
   newEx() { exForm(); },
   editEx(d) { closeSheet(() => exForm(d.id)); },
@@ -890,6 +896,7 @@ const A = {
     const p = prog(d.id);
     sheet('โปรแกรม', `<form data-f="progname"><input type="hidden" name="pid" value="${p.id}">${fld('ชื่อโปรแกรม', `<input name="name" value="${esc(p.name)}" required>`)}
       <div class="fld"><span>เป้าหมาย</span><div class="seg">${['fat', 'muscle'].map(g => `<label><input type="radio" name="goal" value="${g}" ${p.goal === g ? 'checked' : ''}><span>${GOALS[g].e} ${GOALS[g].th}</span></label>`).join('')}</div></div>
+      ${placeSeg(p.place || 'gym')}
       <button class="btn pri block" style="padding:14px">บันทึก</button></form>
       <div class="menu" style="margin-top:10px"><button data-a="expProg" data-id="${p.id}">${ic('image')} ส่งออกเป็นรูป</button><button data-a="dupProg" data-id="${p.id}">${ic('copy')} ทำสำเนาให้ลูกเทรนคนอื่น/คนเดิม</button><button class="bad" data-a="delProg" data-id="${p.id}">${ic('trash')} ลบโปรแกรม</button></div>`);
   },
@@ -905,6 +912,7 @@ const A = {
     if (sheetEl) closeSheet(go_); else go_();
   },
   pkM(d) { PK.m = d.k; $$('[data-a=pkM]').forEach(b => b.classList.toggle('on', b.dataset.k === d.k)); pkRender(); },
+  pkHome(d, el) { PK.home = el.checked; pkRender(); },
   pkToggle(d) { const i = PK.sel.indexOf(d.id); i >= 0 ? PK.sel.splice(i, 1) : PK.sel.push(d.id); pkRender(); },
   pkAdd() {
     const p = prog(PK.pid), g = p.goal, dy = p.days[ui.pd];
@@ -942,7 +950,7 @@ function shiftMonth(s, n) { const d = pd(s), day = d.getDate(); d.setDate(1); d.
 
 forms.goto = d => { ui.cd = d.d; closeSheet(() => render()); };
 forms.dayname = d => { prog(d.pid).days[ui.pd].name = d.name.trim(); save(); closeSheet(() => render()); };
-forms.progname = d => { const p = prog(d.pid); p.name = d.name.trim(); p.goal = d.goal; save(); closeSheet(() => render()); };
+forms.progname = d => { const p = prog(d.pid); p.name = d.name.trim(); p.goal = d.goal; p.place = d.place; save(); closeSheet(() => render()); };
 forms.dupprog = d => {
   const p = prog(d.pid), n = JSON.parse(JSON.stringify(p)); n.id = uid(); n.clientId = d.cid; n.name = p.name + ' (สำเนา)'; n.days.forEach(dy => { dy.id = uid(); dy.items.forEach(i => i.id = uid()); });
   S.programs.push(n); save(); closeSheet(() => go('/program/' + n.id));
@@ -972,8 +980,8 @@ function seedDemo() {
   const plan = [[0, cs[0], '17:00'], [1, cs[1], '18:30'], [2, cs[2], '07:00'], [3, cs[0], '17:00'], [4, cs[1], '18:30'], [5, cs[2], '09:00']];
   plan.forEach(([o, c, tm]) => { const d = addD(ws, o); if (d >= t) S.sessions.push({ id: uid(), clientId: c.id, date: d, time: tm, dur: 60, note: '', status: 'planned' }); });
   S.clients.push(...cs);
-  [[cs[0], 'fat'], [cs[1], 'muscle']].forEach(([c, g]) => S.programs.push({ id: uid(), clientId: c.id, name: g === 'fat' ? 'โปรแกรมลดไขมัน 8 สัปดาห์' : 'โปรแกรมสร้างกล้าม Upper/Lower', goal: g, created: t,
-    days: TEMPLATES[g].days.map(dy => ({ id: uid(), name: dy.name, items: dy.items.map(([ex, sets, reps, rest]) => ({ id: uid(), ex, sets, reps, rest, weight: '', note: '' })) })) }));
+  [[cs[0], 'fat'], [cs[1], 'muscle']].forEach(([c, g]) => S.programs.push({ id: uid(), clientId: c.id, name: g === 'fat' ? 'ลดไขมัน 8 สัปดาห์ (ที่บ้าน)' : 'สร้างกล้าม Upper/Lower (ยิม)', goal: g, place: g === 'fat' ? 'home' : 'gym', created: t,
+    days: TEMPLATES[g + '_' + (g === 'fat' ? 'home' : 'gym')].days.map(dy => ({ id: uid(), name: dy.name, items: dy.items.map(([ex, sets, reps, rest]) => ({ id: uid(), ex, sets, reps, rest, weight: '', note: '' })) })) }));
   save();
 }
 

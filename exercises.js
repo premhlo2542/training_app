@@ -63,6 +63,7 @@ const _EX = [
   ['Close-Grip_Barbell_Bench_Press','เบนช์เพรสมือแคบ','Close-Grip Bench Press','arms','barbell','จับแคบกว่าไหล่เล็กน้อย ศอกชิดลำตัว เน้นไตรเซ็ป'],
   // ขา
   ['Bodyweight_Squat','สควอทน้ำหนักตัว','Bodyweight Squat','legs','body','เข่าชี้ตามปลายเท้า ส้นเท้าติดพื้น ลงให้ต้นขาขนานพื้น'],
+  ['Dumbbell_Squat','ดัมเบลสควอท','Dumbbell Squat','legs','dumbbell','ถือดัมเบลสองข้างข้างลำตัว หลังตรง ลงให้ต้นขาขนานพื้น'],
   ['Goblet_Squat','โกเบลทสควอท','Goblet Squat','legs','kettlebell','ถือน้ำหนักชิดอก ลำตัวตั้งตรง เหมาะสำหรับเรียนรู้ท่าสควอท'],
   ['Barbell_Squat','บาร์เบลสควอท','Barbell Squat','legs','barbell','เกร็งท้อง หลังตรง ลงลึกจนต้นขาขนานพื้น ราชาแห่งท่าขา'],
   ['Dumbbell_Lunges','ดัมเบลลันจ์','Dumbbell Lunge','legs','dumbbell','ก้าวยาว ลำตัวตรง เข่าหน้าไม่เลยปลายเท้ามาก'],
@@ -76,6 +77,7 @@ const _EX = [
   ['Seated_Leg_Curl','เลกเคิร์ลนั่ง','Seated Leg Curl','legs','machine','ปรับเบาะให้เข่าตรงแกนเครื่อง'],
   ['Romanian_Deadlift','โรมาเนียนเดดลิฟต์','Romanian Deadlift','legs','barbell','หลังตรง ดันสะโพกไปด้านหลัง รู้สึกยืดที่ต้นขาด้านหลัง'],
   ['Stiff-Legged_Dumbbell_Deadlift','สติฟเลกเดดลิฟต์ดัมเบล','Stiff-Leg Dumbbell Deadlift','legs','dumbbell','เข่างอเล็กน้อย ก้มโดยพับสะโพก'],
+  ['Calf_Raise_On_A_Dumbbell','เขย่งน่องถือดัมเบล','Dumbbell Calf Raise','legs','dumbbell','เขย่งปลายเท้าบนขอบบันได ถือดัมเบลข้างเดียว ค้างสุด 1 วินาที'],
   ['Standing_Calf_Raises','ยืนเขย่งน่อง','Standing Calf Raise','legs','machine','เขย่งสุด ค้าง 1 วินาที ลงยืดเต็มช่วง'],
   // ก้น
   ['Barbell_Hip_Thrust','ฮิปทรัสต์','Hip Thrust','glutes','barbell','หลังส่วนบนพิงม้านั่ง ดันสะโพกจนลำตัวเป็นเส้นตรง บีบก้นค้าง'],
@@ -109,11 +111,15 @@ const _EX = [
   ['@high-knees','วิ่งยกเข่าสูง','High Knees','cardio','body','วิ่งอยู่กับที่ ยกเข่าสูงระดับสะโพก']
 ];
 
+const PLACES = { gym: { th: 'ที่ยิม', e: '🏋️' }, home: { th: 'ที่บ้าน', e: '🏠' } };
+// ท่าที่ทำที่บ้านได้: น้ำหนักตัว ดัมเบล เคตเทิลเบล และอุปกรณ์ง่ายๆ (เชือก/ลูกล้อ)
+const homeOk = e => ['body', 'dumbbell', 'kettlebell', 'other'].includes(e.eq) || e.custom;
+
 const EX = _EX.map(([id, th, en, m, eq, tip]) => ({ id, th, en, m, eq, tip, db: !id.startsWith('@') }));
 
 /* เทมเพลตโปรแกรม: [exId, sets, reps, restSec] */
 const TEMPLATES = {
-  fat: {
+  fat_gym: {
     label: 'ลดไขมัน • 3 วัน/สัปดาห์ (เซอร์กิตทั้งตัว)',
     days: [
       { name: 'วันที่ 1 • ทั้งตัว A', items: [
@@ -127,7 +133,7 @@ const TEMPLATES = {
         ['Dumbbell_Step_Ups',3,'12 ข้าง',45],['Crunches',3,'20',30],['@burpee',3,'10',45],['Running_Treadmill',6,'1 นาที เร็ว / 1 นาที เดิน',0]] }
     ]
   },
-  muscle: {
+  muscle_gym: {
     label: 'สร้างกล้ามเนื้อ • 4 วัน/สัปดาห์ (บน-ล่าง)',
     days: [
       { name: 'วันที่ 1 • ร่างกายส่วนบน A', items: [
@@ -144,6 +150,38 @@ const TEMPLATES = {
         ['Leg_Extensions',3,'12',60],['Seated_Leg_Curl',3,'12',60],['Hanging_Leg_Raise',3,'12',45]] }
     ]
   }
+};
+
+TEMPLATES.fat_home = {
+  label: 'ลดไขมัน • 3 วัน/สัปดาห์ (ที่บ้าน ไม่ใช้อุปกรณ์)',
+  days: [
+    { name: 'วันที่ 1 • ทั้งตัว A', items: [
+      ['Bodyweight_Squat',3,'15',40],['Pushups',3,'10',40],['Bodyweight_Walking_Lunge',3,'12 ข้าง',40],
+      ['Butt_Lift_Bridge',3,'15',30],['Plank',3,'40 วินาที',30],['@jumping-jack',3,'40 วินาที',30]] },
+    { name: 'วันที่ 2 • ทั้งตัว B + คาร์ดิโอ', items: [
+      ['Freehand_Jump_Squat',3,'12',40],['Superman',3,'12',30],['Mountain_Climbers',3,'30 วินาที',30],
+      ['Single_Leg_Glute_Bridge',3,'12 ข้าง',30],['Air_Bike',3,'20',30],['@burpee',3,'10',45]] },
+    { name: 'วันที่ 3 • ทั้งตัว C + HIIT', items: [
+      ['Glute_Kickback',3,'15 ข้าง',30],['Incline_Push-Up',3,'12',40],['Bench_Dips',3,'12',40],
+      ['Dead_Bug',3,'12',30],['Russian_Twist',3,'20',30],['@high-knees',4,'30 วินาที',20],['Rope_Jumping',4,'1 นาที',30]] }
+  ]
+};
+TEMPLATES.muscle_home = {
+  label: 'สร้างกล้ามเนื้อ • 4 วัน/สัปดาห์ (ที่บ้าน ดัมเบล+น้ำหนักตัว)',
+  days: [
+    { name: 'วันที่ 1 • ร่างกายส่วนบน A', items: [
+      ['Pushups',4,'10–15',90],['Bent_Over_Two-Dumbbell_Row',4,'10',90],['Dumbbell_Shoulder_Press',3,'10',75],
+      ['One-Arm_Dumbbell_Row',3,'10 ข้าง',60],['Dumbbell_Alternate_Bicep_Curl',3,'12',60],['Bench_Dips',3,'12',60]] },
+    { name: 'วันที่ 2 • ร่างกายส่วนล่าง A', items: [
+      ['Goblet_Squat',4,'10–12',90],['Stiff-Legged_Dumbbell_Deadlift',3,'10',90],['Split_Squat_with_Dumbbells',3,'10 ข้าง',75],
+      ['Butt_Lift_Bridge',3,'15',45],['Calf_Raise_On_A_Dumbbell',4,'15',45],['Plank',3,'45 วินาที',30]] },
+    { name: 'วันที่ 3 • ร่างกายส่วนบน B', items: [
+      ['Decline_Push-Up',4,'8–12',90],['Arnold_Dumbbell_Press',3,'10',75],['Reverse_Flyes',3,'12–15',60],
+      ['Side_Lateral_Raise',3,'12–15',45],['Hammer_Curls',3,'12',60],['Dumbbell_Flyes',3,'12',60]] },
+    { name: 'วันที่ 4 • ร่างกายส่วนล่าง B', items: [
+      ['Dumbbell_Lunges',3,'10 ข้าง',75],['Dumbbell_Step_Ups',3,'10 ข้าง',75],['Single_Leg_Glute_Bridge',3,'12 ข้าง',45],
+      ['Dumbbell_Squat',3,'12',75],['Crunches',3,'20',30],['Russian_Twist',3,'20',30]] }
+  ]
 };
 
 const GOALS = {

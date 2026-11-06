@@ -113,7 +113,7 @@ async function drawProgram(p, o) {
   const cv = mkCanvas(W, H), c = cv.getContext('2d');
   c.fillStyle = '#F2F4F9'; c.fillRect(0, 0, W, H);
   const cl = client(p.clientId), g = GOALS[p.goal];
-  header(c, W, HEAD, o.theme, 'PERSONAL TRAINING PROGRAM', p.name, cl ? `สำหรับ ${cl.name}` : '', `เป้าหมาย: ${g.th} • ${days.length} วัน${S.settings.trainer ? ' • โค้ช ' + S.settings.trainer : ''}`);
+  header(c, W, HEAD, o.theme, 'PERSONAL TRAINING PROGRAM', p.name, cl ? `สำหรับ ${cl.name}` : '', `เป้าหมาย: ${g.th} • ${PLACES[p.place || 'gym'].th} • ${days.length} วัน${S.settings.trainer ? ' • โค้ช ' + S.settings.trainer : ''}`);
   let y = HEAD + 30;
   days.forEach((d, di) => {
     c.textBaseline = 'middle'; c.textAlign = 'left';
